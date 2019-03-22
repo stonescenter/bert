@@ -321,11 +321,8 @@ class BusinessNewsData(DataProcessor):
         continue
       guid = "%s-%s" % (set_type, i)
       text = tokenization.convert_to_unicode(line[1])
-
-      if set_type == "test":
-        label = "0"
-      else:
-        label = tokenization.convert_to_unicode(line[0])
+      label = tokenization.convert_to_unicode(line[0])
+      
       examples.append(
           InputExample(guid=guid, text_a=text, label=label))
     return examples
@@ -718,7 +715,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
           train_op=train_op,
           scaffold_fn=scaffold_fn)
     elif mode == tf.estimator.ModeKeys.EVAL:
-
+      #TODO f1 metric and recall
       def metric_fn(per_example_loss, label_ids, logits, is_real_example):
         predictions = tf.argmax(logits, axis=-1, output_type=tf.int32)
         accuracy = tf.metrics.accuracy(
