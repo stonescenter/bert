@@ -19,12 +19,13 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
-import csv
+import csv, json
 import os
 import modeling
 import optimization
 import tokenization
 import tensorflow as tf
+from sklearn.model_selection import train_test_split
 
 flags = tf.flags
 
@@ -66,6 +67,11 @@ flags.DEFINE_integer(
     "The maximum total input sequence length after WordPiece tokenization. "
     "Sequences longer than this will be truncated, and sequences shorter "
     "than this will be padded.")
+
+flags.DEFINE_integer(
+    "seed", 1,
+    "The seed to randomic splitting of dataset"
+    "For task BND")
 
 flags.DEFINE_bool("do_train", False, "Whether to run training.")
 
@@ -294,34 +300,62 @@ class MnliProcessor(DataProcessor):
 
 class BusinessNewsData(DataProcessor):
   """Processor from dataset of business news"""
+  x = []
+  y = []
+  
+  y_val = []
+  y_test = []
+  y_train = []
+  x_val = []
+  x_test = []
+  x_train = []
+
+  data = []
+  
+  dicReverse = {-1: 'negative', 0: 'neutral', 1: 'positive'}
+  
+  def __init__(self, data_dir, seed):
+    with open(data_dir) as f:
+      self.data = json.load(f)
+
+    for block in self.data:
+        self.x.append("%s %s"%(block["headlineTitle"], block["headlineText"]))
+        self.y.append(self.dicReverse[block["classification"]])
+    
+    tx_train = 0.7
+    tx_val = 0.1
+    tx_test = 0.20
+    self.x, self.x_test, self.y, self.y_test = train_test_split(self.x, self.y, test_size=tx_test, random_state=seed)
+    self.x_train, self.x_val, self.y_train, self.y_val = train_test_split(self.x, self.y, test_size=tx_val/tx_train, random_state=seed)
+    
+    return super(BusinessNewsData, self).__init__()
+
   def get_train_examples(self, data_dir):
     """See base class."""
     return self._create_examples(
-        self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
+        self.x_train, self.y_train, "train")
 
   def get_dev_examples(self, data_dir):
     """See base class."""
     return self._create_examples(
-        self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
+        self.x_val, self.y_val, "dev")
 
   def get_test_examples(self, data_dir):
     """See base class."""
     return self._create_examples(
-        self._read_tsv(os.path.join(data_dir, "test.tsv")), "test")
+        self.x_test, self.y_test, "test")
 
   def get_labels(self):
     """See base class."""
     return ["negative", "neutral", "positive"]
   
-  def _create_examples(self, lines, set_type):
+  def _create_examples(self, x, y, set_type):
     """Creates examples for the training and dev sets."""
     examples = []
-    for (i, line) in enumerate(lines):
-      if i == 0:
-        continue
+    for i in xrange(len(x)):
       guid = "%s-%s" % (set_type, i)
-      text = tokenization.convert_to_unicode(line[1])
-      label = tokenization.convert_to_unicode(line[0])
+      text = tokenization.convert_to_unicode(x[i])
+      label = tokenization.convert_to_unicode(y[i])
       
       examples.append(
           InputExample(guid=guid, text_a=text, label=label))
@@ -817,13 +851,12 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
 
 def main(_):
   tf.logging.set_verbosity(tf.logging.INFO)
-  #TODO: to add task to my application
   processors = {
       "cola": ColaProcessor,
       "mnli": MnliProcessor,
       "mrpc": MrpcProcessor,
       "xnli": XnliProcessor,
-      "bnd": BusinessNewsData
+      "bnd": BusinessNewsData(FLAGS.data_dir, FLAGS.seed)
   }
 
   tokenization.validate_case_matches_checkpoint(FLAGS.do_lower_case,
@@ -848,7 +881,10 @@ def main(_):
   if task_name not in processors:
     raise ValueError("Task not found: %s" % (task_name))
 
-  processor = processors[task_name]()
+  if(task_name == 'bnd'):
+    processor = processors[task_name]
+  else:
+    processor = processors[task_name]()
 
   label_list = processor.get_labels()
 
