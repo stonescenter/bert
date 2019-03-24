@@ -327,8 +327,31 @@ class BusinessNewsData(DataProcessor):
     tx_test = 0.20
     self.x, self.x_test, self.y, self.y_test = train_test_split(self.x, self.y, test_size=tx_test, random_state=seed)
     self.x_train, self.x_val, self.y_train, self.y_val = train_test_split(self.x, self.y, test_size=tx_val/tx_train, random_state=seed)
-    
+      
+    self.distribuicao(self.y_train, 'train')
+    self.distribuicao(self.y_val, 'validation')
+    self.distribuicao(self.y_test, 'test')
+
     return super(BusinessNewsData, self).__init__()
+
+  def distribuicao(self, arrayLabels, conjunto):
+    qtdePositive = 0
+    qtdeNegative = 0
+    qtdeNeutral = 0
+    total = len(arrayLabels)
+    
+    for e in arrayLabels: 
+      if (e == 'positive'):
+        qtdePositive = qtdePositive + 1
+      elif (e == 'neutral'):
+        qtdeNeutral = qtdeNeutral + 1
+      else :
+        qtdeNegative = qtdeNegative + 1
+    
+    with open(FLAGS.output_dir + '/dataDistribution.txt', 'a') as f:
+      f.write("------ STATISTICS %s ------\n"%(conjunto))
+      f.write("POSITIVES: %f NEUTRAL: %f NEGATIVES: %f\n"%(float(qtdePositive/total), float(qtdeNeutral/total), float(qtdeNegative/total)))
+    f.close()
 
   def get_train_examples(self, data_dir):
     """See base class."""
