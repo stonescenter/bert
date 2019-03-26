@@ -772,14 +772,19 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
           train_op=train_op,
           scaffold_fn=scaffold_fn)
     elif mode == tf.estimator.ModeKeys.EVAL:
-      #TODO f1 metric and recall
       def metric_fn(per_example_loss, label_ids, logits, is_real_example):
         predictions = tf.argmax(logits, axis=-1, output_type=tf.int32)
         accuracy = tf.metrics.accuracy(
             labels=label_ids, predictions=predictions, weights=is_real_example)
+        recall = tf.metrics.recall(labels=label_ids, predictions=predictions, weights=is_real_example)
+        precision = tf.metrics.precision(labels=label_ids, predictions=predictions, weights=is_real_example)
+        f1 = 2*(precision*recall)/(precision + recall)
         loss = tf.metrics.mean(values=per_example_loss, weights=is_real_example)
+        
         return {
             "eval_accuracy": accuracy,
+            "eval_recall": recall,
+            "eval_f1": f1,
             "eval_loss": loss,
         }
 
@@ -791,10 +796,33 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
           eval_metrics=eval_metrics,
           scaffold_fn=scaffold_fn)
     else:
+      def metric_fn(per_example_loss, label_ids, logits, is_real_example):
+        predictions = tf.argmax(logits, axis=-1, output_type=tf.int32)
+        accuracy = tf.metrics.accuracy(
+            labels=label_ids, predictions=predictions, weights=is_real_example)
+        recall = tf.metrics.recall(labels=label_ids, predictions=predictions, weights=is_real_example)
+        precision = tf.metrics.precision(labels=label_ids, predictions=predictions, weights=is_real_example)
+        f1 = 2*(precision*recall)/(precision + recall)
+        loss = tf.metrics.mean(values=per_example_loss, weights=is_real_example)
+        
+        return {
+            "test_accuracy": accuracy,
+            "test_recall": recall,
+            "test_f1": f1,
+            "test_loss": loss,
+        }
+      test_metrics = (metric_fn,
+                      [per_example_loss, label_ids, logits, is_real_example])
       output_spec = tf.contrib.tpu.TPUEstimatorSpec(
           mode=mode,
-          predictions={"probabilities": probabilities},
+          loss=total_loss,
+          eval_metrics=test_metrics,
           scaffold_fn=scaffold_fn)
+      # ORIGINAL
+      #output_spec = tf.contrib.tpu.TPUEstimatorSpec(
+      #    mode=mode,
+      #    predictions={"probabilities": probabilities},
+      #    scaffold_fn=scaffold_fn)
     return output_spec
 
   return model_fn
@@ -1051,20 +1079,26 @@ def main(_):
 
     result = estimator.predict(input_fn=predict_input_fn)
 
-    output_predict_file = os.path.join(FLAGS.output_dir, "test_results.tsv")
-    with tf.gfile.GFile(output_predict_file, "w") as writer:
-      num_written_lines = 0
-      tf.logging.info("***** Predict results *****")
-      for (i, prediction) in enumerate(result):
-        probabilities = prediction["probabilities"]
-        if i >= num_actual_predict_examples:
-          break
-        output_line = "\t".join(
-            str(class_probability)
-            for class_probability in probabilities) + "\n"
-        writer.write(output_line)
-        num_written_lines += 1
-    assert num_written_lines == num_actual_predict_examples
+    output_test_file = os.path.join(FLAGS.output_dir, "test_results.txt")
+    with tf.gfile.GFile(output_test_file, "w") as writer:
+      tf.logging.info("***** Test results *****")
+      for key in sorted(result.keys()):
+        tf.logging.info("  %s = %s", key, str(result[key]))
+        writer.write("%s = %s\n" % (key, str(result[key])))
+    #output_predict_file = os.path.join(FLAGS.output_dir, "test_results.tsv")
+    #with tf.gfile.GFile(output_predict_file, "w") as writer:
+    #  num_written_lines = 0
+    #  tf.logging.info("***** Predict results *****")
+    #  for (i, prediction) in enumerate(result):
+    #    probabilities = prediction["probabilities"]
+    #    if i >= num_actual_predict_examples:
+    #      break
+    #    output_line = "\t".join(
+    #        str(class_probability)
+    #        for class_probability in probabilities) + "\n"
+    #    writer.write(output_line)
+    #    num_written_lines += 1
+    #assert num_written_lines == num_actual_predict_examples
 
 
 if __name__ == "__main__":
