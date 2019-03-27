@@ -75,7 +75,9 @@ flags.DEFINE_integer(
 
 flags.DEFINE_bool("do_train", False, "Whether to run training.")
 
-flags.DEFINE_bool("do_eval", False, "Whether to run eval on the dev set.")
+flags.DEFINE_bool("do_eval", False, "Whether to run eval on the validation set.")
+
+flags.DEFINE_bool("do_test", False, "Whether to run eval on the test set.")
 
 flags.DEFINE_bool(
     "do_predict", False,
@@ -778,14 +780,14 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
             labels=label_ids, predictions=predictions, weights=is_real_example)
         recall = tf.metrics.recall(labels=label_ids, predictions=predictions, weights=is_real_example)
         precision = tf.metrics.precision(labels=label_ids, predictions=predictions, weights=is_real_example)
-        #f1 = 2*(precision*recall)/(precision + recall)
+        f1 = 2*(float(precision)*float(recall))/(float(precision) + float(recall))
         loss = tf.metrics.mean(values=per_example_loss, weights=is_real_example)
         
         return {
             "eval_accuracy": accuracy,
             "eval_recall": recall,
             "eval_precision": precision,
-            #"eval_f1": f1,
+            "eval_f1": f1,
             "eval_loss": loss,
         }
 
@@ -1050,6 +1052,44 @@ def main(_):
         tf.logging.info("  %s = %s", key, str(result[key]))
         writer.write("%s = %s\n" % (key, str(result[key])))
 
+  if FLAGS.do_test:
+    test_examples = processor.get_test_examples(FLAGS.data_dir)
+    num_actual_test_examples = len(test_examples)
+    if FLAGS.use_tpu:
+      # TPU requires a fixed batch size for all batches, therefore the number
+      # of examples must be a multiple of the batch size, or else examples
+      # will get dropped. So we pad with fake examples which are ignored
+      # later on.
+      while len(test_examples) % FLAGS.predict_batch_size != 0:
+        test_examples.append(PaddingInputExample())
+
+    predict_file = os.path.join(FLAGS.output_dir, "predict.tf_record")
+    file_based_convert_examples_to_features(test_examples, label_list,
+                                            FLAGS.max_seq_length, tokenizer,
+                                            predict_file)
+
+    tf.logging.info("***** Running test*****")
+    tf.logging.info("  Num examples = %d (%d actual, %d padding)",
+                    len(test_examples), num_actual_test_examples,
+                    len(test_examples) - num_actual_test_examples)
+    tf.logging.info("  Batch size = %d", FLAGS.predict_batch_size)
+
+    test_drop_remainder = True if FLAGS.use_tpu else False
+    test_input_fn = file_based_input_fn_builder(
+        input_file=predict_file,
+        seq_length=FLAGS.max_seq_length,
+        is_training=False,
+        drop_remainder=test_drop_remainder)
+    
+    result = estimator.evaluate(input_fn=test_input_fn, steps=None)
+
+    output_test_file = os.path.join(FLAGS.output_dir, "test_results.txt")
+    with tf.gfile.GFile(output_test_file, "w") as writer:
+      tf.logging.info("***** Test results *****")
+      for key in sorted(result.keys()):
+        tf.logging.info("  %s = %s", key, str(result[key]))
+        writer.write("%s = %s\n" % (key, str(result[key])))
+    
   if FLAGS.do_predict:
     predict_examples = processor.get_test_examples(FLAGS.data_dir)
     num_actual_predict_examples = len(predict_examples)
@@ -1081,27 +1121,20 @@ def main(_):
 
     result = estimator.predict(input_fn=predict_input_fn)
 
-    output_test_file = os.path.join(FLAGS.output_dir, "test_results.txt")
-    with tf.gfile.GFile(output_test_file, "w") as writer:
-      tf.logging.info("***** Test results *****")
-      for key in sorted(result.keys()):
-        tf.logging.info("  %s = %s", key, str(result[key]))
-        writer.write("%s = %s\n" % (key, str(result[key])))
-    #output_predict_file = os.path.join(FLAGS.output_dir, "test_results.tsv")
-    #with tf.gfile.GFile(output_predict_file, "w") as writer:
-    #  num_written_lines = 0
-    #  tf.logging.info("***** Predict results *****")
-    #  for (i, prediction) in enumerate(result):
-    #    probabilities = prediction["probabilities"]
-    #    if i >= num_actual_predict_examples:
-    #      break
-    #    output_line = "\t".join(
-    #        str(class_probability)
-    #        for class_probability in probabilities) + "\n"
-    #    writer.write(output_line)
-    #    num_written_lines += 1
-    #assert num_written_lines == num_actual_predict_examples
-
+    output_predict_file = os.path.join(FLAGS.output_dir, "test_results.tsv")
+    with tf.gfile.GFile(output_predict_file, "w") as writer:
+      num_written_lines = 0
+      tf.logging.info("***** Predict results *****")
+      for (i, prediction) in enumerate(result):
+        probabilities = prediction["probabilities"]
+        if i >= num_actual_predict_examples:
+          break
+        output_line = "\t".join(
+            str(class_probability)
+            for class_probability in probabilities) + "\n"
+        writer.write(output_line)
+        num_written_lines += 1
+    assert num_written_lines == num_actual_predict_examples
 
 if __name__ == "__main__":
   flags.mark_flag_as_required("data_dir")
