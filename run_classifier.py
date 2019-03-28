@@ -780,8 +780,12 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
             labels=label_ids, predictions=predictions, weights=is_real_example)
         recall = tf.metrics.recall(labels=label_ids, predictions=predictions, weights=is_real_example)
         precision = tf.metrics.precision(labels=label_ids, predictions=predictions, weights=is_real_example)
-        f1 = tf.contrib.metrics.f1_score(labels=label_ids, predictions=predictions, weights=is_real_example)
+        #f1 = tf.contrib.metrics.f1_score(labels=label_ids, predictions=predictions, weights=is_real_example)
         loss = tf.metrics.mean(values=per_example_loss, weights=is_real_example)
+        
+        precisionXrecall = tf.math.multiply(recall[0], precision[0])
+        precisionMrecall = tf.math.add(recall[0], precision[0])
+        f1 = 2*tf.Session().run(tf.math.divide(precisionXrecall, precisionMrecall))
         
         return {
             "eval_accuracy": accuracy,
@@ -805,8 +809,12 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
             labels=label_ids, predictions=predictions, weights=is_real_example)
         recall = tf.metrics.recall(labels=label_ids, predictions=predictions, weights=is_real_example)
         precision = tf.metrics.precision(labels=label_ids, predictions=predictions, weights=is_real_example)
-        f1 = tf.contrib.metrics.f1_score(labels=label_ids, predictions=predictions, weights=is_real_example)
+        #f1 = tf.contrib.metrics.f1_score(labels=label_ids, predictions=predictions, weights=is_real_example)
         loss = tf.metrics.mean(values=per_example_loss, weights=is_real_example)
+        
+        precisionXrecall = tf.math.multiply(recall[0], precision[0])
+        precisionMrecall = tf.math.add(recall[0], precision[0])
+        f1 = 2*tf.Session().run(tf.math.divide(precisionXrecall, precisionMrecall))
         
         return {
             "test_accuracy": accuracy,
