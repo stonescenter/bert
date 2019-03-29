@@ -803,38 +803,10 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
           eval_metrics=eval_metrics,
           scaffold_fn=scaffold_fn)
     else:
-      def metric_fn(per_example_loss, label_ids, logits, is_real_example):
-        predictions = tf.argmax(logits, axis=-1, output_type=tf.int32)
-        accuracy = tf.metrics.accuracy(
-            labels=label_ids, predictions=predictions, weights=is_real_example)
-        recall = tf.metrics.recall(labels=label_ids, predictions=predictions, weights=is_real_example)
-        precision = tf.metrics.precision(labels=label_ids, predictions=predictions, weights=is_real_example)
-        #f1 = tf.contrib.metrics.f1_score(labels=label_ids, predictions=predictions, weights=is_real_example)
-        loss = tf.metrics.mean(values=per_example_loss, weights=is_real_example)
-        
-        #precisionXrecall = tf.math.multiply(recall[0], precision[0])
-        #precisionMrecall = tf.math.add(recall[0], precision[0])
-        #f1 = 2*tf.Session().run(tf.math.divide(precisionXrecall, precisionMrecall))
-        
-        return {
-            "test_accuracy": accuracy,
-            "test_recall": recall,
-            "test_precision": precision,
-            #"test_f1": f1,
-            "test_loss": loss,
-        }
-      test_metrics = (metric_fn,
-                      [per_example_loss, label_ids, logits, is_real_example])
       output_spec = tf.contrib.tpu.TPUEstimatorSpec(
           mode=mode,
-          loss=total_loss,
-          eval_metrics=test_metrics,
+          predictions={"probabilities": probabilities},
           scaffold_fn=scaffold_fn)
-      # ORIGINAL
-      #output_spec = tf.contrib.tpu.TPUEstimatorSpec(
-      #    mode=mode,
-      #    predictions={"probabilities": probabilities},
-      #    scaffold_fn=scaffold_fn)
     return output_spec
 
   return model_fn
