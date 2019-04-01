@@ -1031,6 +1031,11 @@ def main(_):
       for key in sorted(result.keys()):
         tf.logging.info("  %s = %s", key, str(result[key]))
         writer.write("%s = %s\n" % (key, str(result[key])))
+      
+      try:
+        writer.write("f1 = %s"%str(2*float(result["eval_recall"])*float(result["eval_precision"])/(float(result["eval_recall"])+float(result["eval_precision"]))))
+      except ZeroDivisionError:
+        pass
 
   if FLAGS.do_test:
     test_examples = processor.get_test_examples(FLAGS.data_dir)
@@ -1069,7 +1074,11 @@ def main(_):
       for key in sorted(result.keys()):
         tf.logging.info("  %s = %s", key, str(result[key]))
         writer.write("%s = %s\n" % (key, str(result[key])))
-    
+      try:
+        writer.write("f1 = %s"%str(2*float(result["eval_recall"])*float(result["eval_precision"])/(float(result["eval_recall"])+float(result["eval_precision"]))))
+      except ZeroDivisionError:
+        pass
+      
   if FLAGS.do_predict:
     predict_examples = processor.get_test_examples(FLAGS.data_dir)
     num_actual_predict_examples = len(predict_examples)
