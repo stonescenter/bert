@@ -788,11 +788,11 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
         #f1 = 2*tf.Session().run(tf.math.divide(precisionXrecall, precisionMrecall))
         
         return {
-            "eval_accuracy": accuracy,
-            "eval_recall": recall,
-            "eval_precision": precision,
+            "accuracy": accuracy,
+            "recall": recall,
+            "precision": precision,
             #"eval_f1": f1,
-            "eval_loss": loss,
+            "loss": loss,
         }
 
       eval_metrics = (metric_fn,
@@ -1033,7 +1033,7 @@ def main(_):
         writer.write("%s = %s\n" % (key, str(result[key])))
       
       try:
-        writer.write("f1 = %s"%str(2*float(result["eval_recall"])*float(result["eval_precision"])/(float(result["eval_recall"])+float(result["eval_precision"]))))
+        writer.write("f1 = %s"%str(2*float(result["recall"])*float(result["precision"])/(float(result["recall"])+float(result["precision"]))))
       except ZeroDivisionError:
         pass
 
@@ -1075,7 +1075,7 @@ def main(_):
         tf.logging.info("  %s = %s", key, str(result[key]))
         writer.write("%s = %s\n" % (key, str(result[key])))
       try:
-        writer.write("f1 = %s"%str(2*float(result["eval_recall"])*float(result["eval_precision"])/(float(result["eval_recall"])+float(result["eval_precision"]))))
+        writer.write("f1 = %s"%str(2*float(result["recall"])*float(result["precision"])/(float(result["recall"])+float(result["precision"]))))
       except ZeroDivisionError:
         pass
       
