@@ -994,3 +994,30 @@ For help or issues using BERT, please submit a GitHub issue.
 For personal communication related to BERT, please contact Jacob Devlin
 (`jacobdevlin@google.com`), Ming-Wei Chang (`mingweichang@google.com`), or
 Kenton Lee (`kentonl@google.com`).
+
+# BERT (FORK PARA O EPIA 2019)
+Foi criada uma task chama BND (Business news dataset) onde é preparado o conjunto de treino validação e teste para nosso modelo.
+
+## Execução do bert
+
+export BNEWS_DATA=/path/to/bert/BNEWS_DATA/
+datasetEconomyNews_reuters+nytimes.json 
+
+export BERT_BASE_DIR=/path/to/bert/uncased_L-12_H-768_A-12
+
+python run_classifier.py \
+  --task_name=BND \
+  --do_train=true \
+  --do_eval=true \
+  --do_test=true \
+  --do_predict=true \
+  --data_dir=$BNEWS_DATA \
+  --vocab_file=$BERT_BASE_DIR/vocab.txt \
+  --bert_config_file=$BERT_BASE_DIR/bert_config.json \
+  --init_checkpoint=$BERT_BASE_DIR/bert_model.ckpt \
+  --max_seq_length=64 \
+  --train_batch_size=32 \
+  --learning_rate=2e-5 \
+  --num_train_epochs=10.0 \
+  --output_dir=/tmp/outBNDtask/ \
+  --seed=123124124

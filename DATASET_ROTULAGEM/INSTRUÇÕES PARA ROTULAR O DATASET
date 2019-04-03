@@ -1,0 +1,38 @@
+#INSTRUÇÕES PARA ROTULAÇÃO DO DATASET
+
+O dataset possui os rótulos (classification) para as notícias:
+-1 : negativo
+0 : neutro
+1 : positivo
+
+Foi colocado o rótulo "5" para notícias ainda não classificadas.
+
+Para rotular, está se seguindo as seguintes convenções:
+
+    # NOTÍCIAS POSITIVAS : 
+        - Notícias que dizem que as ações de uma determinada empresa subiu.
+        - Notícias que dizem que a bolsa fechou em alta.
+        -       ...          que houve qualquer tipo de insentivo fiscal do governo para as empresas (ex: corte de tarifas)
+    # NOTÍCIAS NEUTRAS :
+        - Notícias de decisões políticas, que não deixam explícito se aquela tomada de decisão é boa ou ruim pra economia.
+            ex: Facing some global economic wobbles, it looks like the Fed corrected course swiftly enough to avoid inflicting lasting economic harm.
+        - Notícias que são comentários sobre possíveis investimentos.
+            ex: The Elite 8 Stocks to Buy for Massive Outperformance
+        - Dicas não muito diretas
+            ex: Why Stock Investors Shouldn't Watch Business TV?
+            ex: If you have been investing long enough, it is hard not to develop opinions (hunches) about what the stock market and economy will do next.
+    # NOTÍCIAS NEGATIVAS :
+        - Notícias que dizem sobre queda da bolsa ou queda de ações de uma determinada empresa.
+        -       ...          sobre algo que irá limitar os lucros das empresas. (ex: Aumento de imposto)
+        -       ...          sobre políticas econômicas destrutivas (Geralmente em comentario de especialistas)
+        -       ...          sobre perspectivas de desaceleração da economia.
+    
+OBSERVAÇÕES: Como as notícias foram tiradas do mecanismo de busca do google 
+e está pegando como headlineText apenas o resumo gerado pelo google, então as vezes
+acontece de os trechos que foram obtidos não fazerem muito sentido. Neste caso,
+deve-se retirar a notícia do dataset. Para que assim o classificador tenho exemplos
+claros pra treinar.
+    
+    Evite colocar notícias que dão informações boas e também informações ruins, 
+    Ex: As ações globais sobem com otimismo comercial, enquanto o petróleo recuou devido
+        à fraca atividade fabril nos EUA.
