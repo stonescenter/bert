@@ -792,7 +792,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
             "recall": recall,
             "precision": precision,
             #"eval_f1": f1,
-            "loss": loss,
+            "_loss": loss,
         }
 
       eval_metrics = (metric_fn,
