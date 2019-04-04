@@ -349,12 +349,16 @@ class BusinessNewsData(DataProcessor):
         qtdeNeutral = qtdeNeutral + 1
       else :
         qtdeNegative = qtdeNegative + 1
+    try:
+      os.mkdir(FLAGS.output_dir)
     
-    with open(FLAGS.output_dir + '/dataDistribution.txt', 'a') as f:
-      f.write("------ STATISTICS %s ------\n"%(conjunto))
-      f.write("POSITIVES: %f NEUTRAL: %f NEGATIVES: %f\n"%(float(qtdePositive/total), float(qtdeNeutral/total), float(qtdeNegative/total)))
-    f.close()
-
+      with open(FLAGS.output_dir + '/dataDistribution.txt', 'w') as f:
+        f.write("------ STATISTICS %s ------\n"%(conjunto))
+        f.write("POSITIVES: %f NEUTRAL: %f NEGATIVES: %f\n"%(float(qtdePositive/total), float(qtdeNeutral/total), float(qtdeNegative/total)))
+      f.close()
+    except:
+      print("Error to open file dataDistribution.txt")
+      
   def get_train_examples(self, data_dir):
     """See base class."""
     return self._create_examples(
