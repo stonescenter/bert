@@ -351,13 +351,15 @@ class BusinessNewsData(DataProcessor):
         qtdeNegative = qtdeNegative + 1
     try:
       os.mkdir(FLAGS.output_dir)
-    
+    except Exception as e:
+      print("Erro ao tentar abrir o diretório" + str(e))
+    try:
       with open(FLAGS.output_dir + '/dataDistribution.txt', 'w') as f:
         f.write("------ STATISTICS %s ------\n"%(conjunto))
         f.write("POSITIVES: %f NEUTRAL: %f NEGATIVES: %f\n"%(float(qtdePositive/total), float(qtdeNeutral/total), float(qtdeNegative/total)))
       f.close()
-    except:
-      print("Error to open file dataDistribution.txt")
+    except Exception as e:
+      print("Error to open file dataDistribution.txt" + str(e))
       
   def get_train_examples(self, data_dir):
     """See base class."""
