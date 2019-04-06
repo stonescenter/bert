@@ -354,7 +354,7 @@ class BusinessNewsData(DataProcessor):
     except Exception as e:
       print("Erro ao tentar abrir o diretório" + str(e))
     try:
-      with open(FLAGS.output_dir + '/dataDistribution.txt', 'w') as f:
+      with open(FLAGS.output_dir + '/dataDistribution.txt', 'a') as f:
         f.write("------ STATISTICS %s ------\n"%(conjunto))
         f.write("POSITIVES: %f NEUTRAL: %f NEGATIVES: %f\n"%(float(qtdePositive/total), float(qtdeNeutral/total), float(qtdeNegative/total)))
       f.close()
