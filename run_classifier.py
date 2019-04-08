@@ -314,7 +314,7 @@ class BusinessNewsData(DataProcessor):
 
   data = []
   
-  dicReverse = {-1: 'negative', 0: 'neutral', 1: 'positive'}
+  dicReverse = {-1: 'negative', 1: 'positive'}
   
   def __init__(self, data_dir, seed):
     with open(data_dir) as f:
@@ -339,14 +339,11 @@ class BusinessNewsData(DataProcessor):
   def distribuicao(self, arrayLabels, conjunto):
     qtdePositive = 0
     qtdeNegative = 0
-    qtdeNeutral = 0
     total = len(arrayLabels)
     
     for e in arrayLabels: 
       if (e == 'positive'):
         qtdePositive = qtdePositive + 1
-      elif (e == 'neutral'):
-        qtdeNeutral = qtdeNeutral + 1
       else :
         qtdeNegative = qtdeNegative + 1
     try:
@@ -356,7 +353,7 @@ class BusinessNewsData(DataProcessor):
     try:
       with open(FLAGS.output_dir + '/dataDistribution.txt', 'a') as f:
         f.write("------ STATISTICS %s ------\n"%(conjunto))
-        f.write("POSITIVES: %f NEUTRAL: %f NEGATIVES: %f\n"%(float(qtdePositive/total), float(qtdeNeutral/total), float(qtdeNegative/total)))
+        f.write("POSITIVES: %f NEGATIVES: %f\n"%(float(qtdePositive/total), float(qtdeNegative/total)))
       f.close()
     except Exception as e:
       print("Error to open file dataDistribution.txt" + str(e))
@@ -378,7 +375,7 @@ class BusinessNewsData(DataProcessor):
 
   def get_labels(self):
     """See base class."""
-    return ["negative", "neutral", "positive"]
+    return ["negative", "positive"]
   
   def _create_examples(self, x, y, set_type):
     """Creates examples for the training and dev sets."""
