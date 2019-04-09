@@ -25,7 +25,8 @@ import modeling
 import optimization
 import tokenization
 import tensorflow as tf
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold
+import numpy as np
 
 flags = tf.flags
 
@@ -308,13 +309,6 @@ class BusinessNewsData(DataProcessor):
   """Processor from dataset of business news"""
   x = []
   y = []
-  
-  y_val = []
-  y_test = []
-  y_train = []
-  x_val = []
-  x_test = []
-  x_train = []
 
   data = []
 
@@ -328,15 +322,9 @@ class BusinessNewsData(DataProcessor):
         self.x.append("%s %s"%(block["headlineTitle"], block["headlineText"]))
         self.y.append(self.dicReverse[block["classification"]])
     
-    tx_train = 0.7
-    tx_val = 0.1
-    tx_test = 0.20
-    self.x, self.x_test, self.y, self.y_test = train_test_split(self.x, self.y, test_size=tx_test, random_state=seed)
-    self.x_train, self.x_val, self.y_train, self.y_val = train_test_split(self.x, self.y, test_size=tx_val/tx_train, random_state=seed)
-      
-    self.distribuicao(self.y_train, 'train')
-    self.distribuicao(self.y_val, 'validation')
-    self.distribuicao(self.y_test, 'test')
+    #self.distribuicao(self.y_train, 'train')
+    #self.distribuicao(self.y_val, 'validation')
+    #self.distribuicao(self.y_test, 'test')
 
     return super(BusinessNewsData, self).__init__()
 
@@ -362,15 +350,15 @@ class BusinessNewsData(DataProcessor):
     except Exception as e:
       print("Error to open file dataDistribution.txt" + str(e))
       
-  def get_train_examples(self, data_dir):
+  def get_train_examples(self, data_dir, x_train, y_train):
     """See base class."""
     return self._create_examples(
-        self.x_train, self.y_train, "train")
+        x_train, y_train, "train")
 
-  def get_dev_examples(self, data_dir):
+  def get_dev_examples(self, data_dir, x_dev, y_dev):
     """See base class."""
     return self._create_examples(
-        self.x_val, self.y_val, "dev")
+        x_dev, y_dev, "dev")
 
   def get_test_examples(self, data_dir):
     """See base class."""
@@ -931,177 +919,256 @@ def main(_):
         "was only trained up to sequence length %d" %
         (FLAGS.max_seq_length, bert_config.max_position_embeddings))
 
-  tf.gfile.MakeDirs(FLAGS.output_dir)
+  ###################################### KFOLD ###################################
+  data = []
+  dicReverse = {-1: 'negative', 1: 'positive'}
+  x=np.array([])
+  y=np.array([])
 
-  task_name = FLAGS.task_name.lower()
-
-  if task_name not in processors:
-    raise ValueError("Task not found: %s" % (task_name))
-
-  if(task_name == 'bnd'):
-    processor = processors[task_name]
-  else:
-    processor = processors[task_name]()
-
-  label_list = processor.get_labels()
-
-  tokenizer = tokenization.FullTokenizer(
-      vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
-
-  tpu_cluster_resolver = None
-  if FLAGS.use_tpu and FLAGS.tpu_name:
-    tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
-        FLAGS.tpu_name, zone=FLAGS.tpu_zone, project=FLAGS.gcp_project)
-
-  is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
-  run_config = tf.contrib.tpu.RunConfig(
-      cluster=tpu_cluster_resolver,
-      master=FLAGS.master,
-      model_dir=FLAGS.output_dir,
-      save_checkpoints_steps=FLAGS.save_checkpoints_steps,
-      tpu_config=tf.contrib.tpu.TPUConfig(
-          iterations_per_loop=FLAGS.iterations_per_loop,
-          num_shards=FLAGS.num_tpu_cores,
-          per_host_input_for_training=is_per_host))
-
-  train_examples = None
-  num_train_steps = None
-  num_warmup_steps = None
-  if FLAGS.do_train:
-    train_examples = processor.get_train_examples(FLAGS.data_dir)
-    num_train_steps = int(
-        len(train_examples) / FLAGS.train_batch_size * FLAGS.num_train_epochs)
-    num_warmup_steps = int(num_train_steps * FLAGS.warmup_proportion)
-
-  model_fn = model_fn_builder(
-      bert_config=bert_config,
-      num_labels=len(label_list),
-      init_checkpoint=FLAGS.init_checkpoint,
-      learning_rate=FLAGS.learning_rate,
-      num_train_steps=num_train_steps,
-      num_warmup_steps=num_warmup_steps,
-      use_tpu=FLAGS.use_tpu,
-      use_one_hot_embeddings=FLAGS.use_tpu)
-
-  # If TPU is not available, this will fall back to normal Estimator on CPU
-  # or GPU.
-  estimator = tf.contrib.tpu.TPUEstimator(
-      use_tpu=FLAGS.use_tpu,
-      model_fn=model_fn,
-      config=run_config,
-      train_batch_size=FLAGS.train_batch_size,
-      eval_batch_size=FLAGS.eval_batch_size,
-      predict_batch_size=FLAGS.predict_batch_size)
+  with open(FLAGS.data_dir) as f:
+      data = json.load(f)
+  
+  for block in data:
+    x = np.append(x, "%s %s"%(block["headlineTitle"], block["headlineText"]))
+    y = np.append(y, dicReverse[block["classification"]])
 
   if FLAGS.do_train:
-    train_file = os.path.join(FLAGS.output_dir, "train.tf_record")
-    file_based_convert_examples_to_features(
-        train_examples, label_list, FLAGS.max_seq_length, tokenizer, train_file)
-    tf.logging.info("***** Running training *****")
-    tf.logging.info("  Num examples = %d", len(train_examples))
-    tf.logging.info("  Batch size = %d", FLAGS.train_batch_size)
-    tf.logging.info("  Num steps = %d", num_train_steps)
-    train_input_fn = file_based_input_fn_builder(
-        input_file=train_file,
-        seq_length=FLAGS.max_seq_length,
-        is_training=True,
-        drop_remainder=True)
-    estimator.train(input_fn=train_input_fn, max_steps=num_train_steps)
+    splitNum = 1
+    kf = KFold(n_splits= 10)
+    for train, test in kf.split(x):
+      #print("%s %s" % (train, test))
+      x_train, x_dev, y_train, y_dev = x[train], x[test], y[train], y[test]
+      #print (x_train, x_dev, y_train, y_test)
 
-  if FLAGS.do_eval:
-    eval_examples = processor.get_dev_examples(FLAGS.data_dir)
-    num_actual_eval_examples = len(eval_examples)
-    if FLAGS.use_tpu:
-      # TPU requires a fixed batch size for all batches, therefore the number
-      # of examples must be a multiple of the batch size, or else examples
-      # will get dropped. So we pad with fake examples which are ignored
-      # later on. These do NOT count towards the metric (all tf.metrics
-      # support a per-instance weight, and these get a weight of 0.0).
-      while len(eval_examples) % FLAGS.eval_batch_size != 0:
-        eval_examples.append(PaddingInputExample())
+      tf.gfile.MakeDirs(FLAGS.output_dir + "split%s"%(str(splitNum)))
 
-    eval_file = os.path.join(FLAGS.output_dir, "eval.tf_record")
-    file_based_convert_examples_to_features(
-        eval_examples, label_list, FLAGS.max_seq_length, tokenizer, eval_file)
+      task_name = FLAGS.task_name.lower()
 
-    tf.logging.info("***** Running evaluation *****")
-    tf.logging.info("  Num examples = %d (%d actual, %d padding)",
-                    len(eval_examples), num_actual_eval_examples,
-                    len(eval_examples) - num_actual_eval_examples)
-    tf.logging.info("  Batch size = %d", FLAGS.eval_batch_size)
+      if task_name not in processors:
+        raise ValueError("Task not found: %s" % (task_name))
 
-    # This tells the estimator to run through the entire set.
-    eval_steps = None
-    # However, if running eval on the TPU, you will need to specify the
-    # number of steps.
-    if FLAGS.use_tpu:
-      assert len(eval_examples) % FLAGS.eval_batch_size == 0
-      eval_steps = int(len(eval_examples) // FLAGS.eval_batch_size)
+      if(task_name == 'bnd'):
+        processor = processors[task_name]
+      else:
+        processor = processors[task_name]()
 
-    eval_drop_remainder = True if FLAGS.use_tpu else False
-    eval_input_fn = file_based_input_fn_builder(
-        input_file=eval_file,
-        seq_length=FLAGS.max_seq_length,
-        is_training=False,
-        drop_remainder=eval_drop_remainder)
+      label_list = processor.get_labels()
 
-    result = estimator.evaluate(input_fn=eval_input_fn, steps=eval_steps)
+      tokenizer = tokenization.FullTokenizer(
+          vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
 
-    output_eval_file = os.path.join(FLAGS.output_dir, "eval_results.txt")
-    with tf.gfile.GFile(output_eval_file, "w") as writer:
-      tf.logging.info("***** Eval results *****")
-      for key in sorted(result.keys()):
-        tf.logging.info("  %s = %s", key, str(result[key]))
-        writer.write("%s = %s\n" % (key, str(result[key])))
-      
-      try:
-        writer.write("f1 = %s"%str(2*float(result["recall"])*float(result["precision"])/(float(result["recall"])+float(result["precision"]))))
-      except ZeroDivisionError:
-        pass
+      tpu_cluster_resolver = None
+      if FLAGS.use_tpu and FLAGS.tpu_name:
+        tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
+            FLAGS.tpu_name, zone=FLAGS.tpu_zone, project=FLAGS.gcp_project)
 
-  if FLAGS.do_test:
-    test_examples = processor.get_test_examples(FLAGS.data_dir)
-    num_actual_test_examples = len(test_examples)
-    if FLAGS.use_tpu:
-      # TPU requires a fixed batch size for all batches, therefore the number
-      # of examples must be a multiple of the batch size, or else examples
-      # will get dropped. So we pad with fake examples which are ignored
-      # later on.
-      while len(test_examples) % FLAGS.predict_batch_size != 0:
-        test_examples.append(PaddingInputExample())
+      is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
+      run_config = tf.contrib.tpu.RunConfig(
+          cluster=tpu_cluster_resolver,
+          master=FLAGS.master,
+          model_dir=FLAGS.output_dir+"split%s"%(str(splitNum)),
+          save_checkpoints_steps=FLAGS.save_checkpoints_steps,
+          tpu_config=tf.contrib.tpu.TPUConfig(
+              iterations_per_loop=FLAGS.iterations_per_loop,
+              num_shards=FLAGS.num_tpu_cores,
+              per_host_input_for_training=is_per_host))
 
-    predict_file = os.path.join(FLAGS.output_dir, "predict.tf_record")
-    file_based_convert_examples_to_features(test_examples, label_list,
-                                            FLAGS.max_seq_length, tokenizer,
-                                            predict_file)
+      train_examples = None
+      num_train_steps = None
+      num_warmup_steps = None
 
-    tf.logging.info("***** Running test*****")
-    tf.logging.info("  Num examples = %d (%d actual, %d padding)",
-                    len(test_examples), num_actual_test_examples,
-                    len(test_examples) - num_actual_test_examples)
-    tf.logging.info("  Batch size = %d", FLAGS.predict_batch_size)
+      if FLAGS.do_train:
+        train_examples = processor.get_train_examples(FLAGS.data_dir, x_train, y_train)
+        num_train_steps = int(
+            len(train_examples) / FLAGS.train_batch_size * FLAGS.num_train_epochs)
+        num_warmup_steps = int(num_train_steps * FLAGS.warmup_proportion)
 
-    test_drop_remainder = True if FLAGS.use_tpu else False
-    test_input_fn = file_based_input_fn_builder(
-        input_file=predict_file,
-        seq_length=FLAGS.max_seq_length,
-        is_training=False,
-        drop_remainder=test_drop_remainder)
-    
-    result = estimator.evaluate(input_fn=test_input_fn, steps=None)
+      model_fn = model_fn_builder(
+          bert_config=bert_config,
+          num_labels=len(label_list),
+          init_checkpoint=FLAGS.init_checkpoint,
+          learning_rate=FLAGS.learning_rate,
+          num_train_steps=num_train_steps,
+          num_warmup_steps=num_warmup_steps,
+          use_tpu=FLAGS.use_tpu,
+          use_one_hot_embeddings=FLAGS.use_tpu)
 
-    output_test_file = os.path.join(FLAGS.output_dir, "test_results.txt")
-    with tf.gfile.GFile(output_test_file, "w") as writer:
-      tf.logging.info("***** Test results *****")
-      for key in sorted(result.keys()):
-        tf.logging.info("  %s = %s", key, str(result[key]))
-        writer.write("%s = %s\n" % (key, str(result[key])))
-      try:
-        writer.write("f1 = %s"%str(2*float(result["recall"])*float(result["precision"])/(float(result["recall"])+float(result["precision"]))))
-      except ZeroDivisionError:
-        pass
-      
+      # If TPU is not available, this will fall back to normal Estimator on CPU
+      # or GPU.
+      estimator = tf.contrib.tpu.TPUEstimator(
+          use_tpu=FLAGS.use_tpu,
+          model_fn=model_fn,
+          config=run_config,
+          train_batch_size=FLAGS.train_batch_size,
+          eval_batch_size=FLAGS.eval_batch_size,
+          predict_batch_size=FLAGS.predict_batch_size)
+
+      if FLAGS.do_train:
+        train_file = os.path.join(FLAGS.output_dir+"split%s"%(str(splitNum)), "train.tf_record")
+        file_based_convert_examples_to_features(
+            train_examples, label_list, FLAGS.max_seq_length, tokenizer, train_file)
+        tf.logging.info("***** Running training *****")
+        tf.logging.info("  Num examples = %d", len(train_examples))
+        tf.logging.info("  Batch size = %d", FLAGS.train_batch_size)
+        tf.logging.info("  Num steps = %d", num_train_steps)
+        train_input_fn = file_based_input_fn_builder(
+            input_file=train_file,
+            seq_length=FLAGS.max_seq_length,
+            is_training=True,
+            drop_remainder=True)
+        estimator.train(input_fn=train_input_fn, max_steps=num_train_steps)
+
+      if FLAGS.do_eval:
+        eval_examples = processor.get_dev_examples(FLAGS.data_dir, x_dev, y_dev)
+        num_actual_eval_examples = len(eval_examples)
+        if FLAGS.use_tpu:
+          # TPU requires a fixed batch size for all batches, therefore the number
+          # of examples must be a multiple of the batch size, or else examples
+          # will get dropped. So we pad with fake examples which are ignored
+          # later on. These do NOT count towards the metric (all tf.metrics
+          # support a per-instance weight, and these get a weight of 0.0).
+          while len(eval_examples) % FLAGS.eval_batch_size != 0:
+            eval_examples.append(PaddingInputExample())
+
+        eval_file = os.path.join(FLAGS.output_dir+"split%s"%(str(splitNum)), "eval.tf_record")
+        file_based_convert_examples_to_features(
+            eval_examples, label_list, FLAGS.max_seq_length, tokenizer, eval_file)
+
+        tf.logging.info("***** Running evaluation *****")
+        tf.logging.info("  Num examples = %d (%d actual, %d padding)",
+                        len(eval_examples), num_actual_eval_examples,
+                        len(eval_examples) - num_actual_eval_examples)
+        tf.logging.info("  Batch size = %d", FLAGS.eval_batch_size)
+
+        # This tells the estimator to run through the entire set.
+        eval_steps = None
+        # However, if running eval on the TPU, you will need to specify the
+        # number of steps.
+        if FLAGS.use_tpu:
+          assert len(eval_examples) % FLAGS.eval_batch_size == 0
+          eval_steps = int(len(eval_examples) // FLAGS.eval_batch_size)
+
+        eval_drop_remainder = True if FLAGS.use_tpu else False
+        eval_input_fn = file_based_input_fn_builder(
+            input_file=eval_file,
+            seq_length=FLAGS.max_seq_length,
+            is_training=False,
+            drop_remainder=eval_drop_remainder)
+
+        result = estimator.evaluate(input_fn=eval_input_fn, steps=eval_steps)
+
+        output_eval_file = os.path.join(FLAGS.output_dir+"split%s"%(str(splitNum)), "eval_results.txt")
+        with tf.gfile.GFile(output_eval_file, "w") as writer:
+          tf.logging.info("***** Eval results *****")
+          for key in sorted(result.keys()):
+            tf.logging.info("  %s = %s", key, str(result[key]))
+            writer.write("%s = %s\n" % (key, str(result[key])))
+          
+          try:
+            writer.write("f1 = %s"%str(2*float(result["recall"])*float(result["precision"])/(float(result["recall"])+float(result["precision"]))))
+          except ZeroDivisionError:
+            pass
+
+      if FLAGS.do_test:
+        test_examples = processor.get_test_examples(FLAGS.data_dir)
+        num_actual_test_examples = len(test_examples)
+        if FLAGS.use_tpu:
+          # TPU requires a fixed batch size for all batches, therefore the number
+          # of examples must be a multiple of the batch size, or else examples
+          # will get dropped. So we pad with fake examples which are ignored
+          # later on.
+          while len(test_examples) % FLAGS.predict_batch_size != 0:
+            test_examples.append(PaddingInputExample())
+
+        predict_file = os.path.join(FLAGS.output_dir, "predict.tf_record")
+        file_based_convert_examples_to_features(test_examples, label_list,
+                                                FLAGS.max_seq_length, tokenizer,
+                                                predict_file)
+
+        tf.logging.info("***** Running test*****")
+        tf.logging.info("  Num examples = %d (%d actual, %d padding)",
+                        len(test_examples), num_actual_test_examples,
+                        len(test_examples) - num_actual_test_examples)
+        tf.logging.info("  Batch size = %d", FLAGS.predict_batch_size)
+
+        test_drop_remainder = True if FLAGS.use_tpu else False
+        test_input_fn = file_based_input_fn_builder(
+            input_file=predict_file,
+            seq_length=FLAGS.max_seq_length,
+            is_training=False,
+            drop_remainder=test_drop_remainder)
+        
+        result = estimator.evaluate(input_fn=test_input_fn, steps=None)
+
+        output_test_file = os.path.join(FLAGS.output_dir, "test_results.txt")
+        with tf.gfile.GFile(output_test_file, "w") as writer:
+          tf.logging.info("***** Test results *****")
+          for key in sorted(result.keys()):
+            tf.logging.info("  %s = %s", key, str(result[key]))
+            writer.write("%s = %s\n" % (key, str(result[key])))
+          try:
+            writer.write("f1 = %s"%str(2*float(result["recall"])*float(result["precision"])/(float(result["recall"])+float(result["precision"]))))
+          except ZeroDivisionError:
+            pass
+
+      splitNum = splitNum + 1
+
   if FLAGS.do_predict:
+    task_name = FLAGS.task_name.lower()
+
+    if task_name not in processors:
+      raise ValueError("Task not found: %s" % (task_name))
+
+    if(task_name == 'bnd'):
+      processor = processors[task_name]
+    else:
+      processor = processors[task_name]()
+
+    label_list = processor.get_labels()
+
+    tokenizer = tokenization.FullTokenizer(
+        vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
+
+    tpu_cluster_resolver = None
+    if FLAGS.use_tpu and FLAGS.tpu_name:
+      tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
+          FLAGS.tpu_name, zone=FLAGS.tpu_zone, project=FLAGS.gcp_project)
+
+    is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
+    run_config = tf.contrib.tpu.RunConfig(
+        cluster=tpu_cluster_resolver,
+        master=FLAGS.master,
+        model_dir=FLAGS.output_dir,
+        save_checkpoints_steps=FLAGS.save_checkpoints_steps,
+        tpu_config=tf.contrib.tpu.TPUConfig(
+            iterations_per_loop=FLAGS.iterations_per_loop,
+            num_shards=FLAGS.num_tpu_cores,
+            per_host_input_for_training=is_per_host))
+
+    train_examples = None
+    num_train_steps = None
+    num_warmup_steps = None
+
+    model_fn = model_fn_builder(
+          bert_config=bert_config,
+          num_labels=len(label_list),
+          init_checkpoint=FLAGS.init_checkpoint,
+          learning_rate=FLAGS.learning_rate,
+          num_train_steps=num_train_steps,
+          num_warmup_steps=num_warmup_steps,
+          use_tpu=FLAGS.use_tpu,
+          use_one_hot_embeddings=FLAGS.use_tpu)
+
+    # If TPU is not available, this will fall back to normal Estimator on CPU
+    # or GPU.
+    estimator = tf.contrib.tpu.TPUEstimator(
+        use_tpu=FLAGS.use_tpu,
+        model_fn=model_fn,
+        config=run_config,
+        train_batch_size=FLAGS.train_batch_size,
+        eval_batch_size=FLAGS.eval_batch_size,
+        predict_batch_size=FLAGS.predict_batch_size)
+
     predict_examples = processor.get_predict_examples(FLAGS.predict_data)
     num_actual_predict_examples = len(predict_examples)
     print(predict_examples, num_actual_predict_examples)
