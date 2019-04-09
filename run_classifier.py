@@ -35,7 +35,11 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string(
     "data_dir", None,
     "The input data dir. Should contain the .tsv files (or other data files) "
-    "for the task.")
+    "for the task. For BND task is the data json.")
+
+flags.DEFINE_string(
+    "predict_data", None,
+    "The input file (.json) for prediction examples.")
 
 flags.DEFINE_string(
     "bert_config_file", None,
@@ -313,7 +317,7 @@ class BusinessNewsData(DataProcessor):
   x_train = []
 
   data = []
-  
+
   dicReverse = {-1: 'negative', 1: 'positive'}
   
   def __init__(self, data_dir, seed):
@@ -372,6 +376,21 @@ class BusinessNewsData(DataProcessor):
     """See base class."""
     return self._create_examples(
         self.x_test, self.y_test, "test")
+  
+  def get_predict_examples(self, predict_data):
+    x_predict=[]
+    y_predict=[]
+    data_predict = []
+    
+    with open(predict_data) as fp:
+      data_predict = json.load(fp)
+    
+    for block in data_predict:
+      x_predict.append("%s %s"%(block["headlineTitle"], block["headlineText"]))
+      y_predict.append("negative")
+    
+    return self._create_examples(
+      x_predict, y_predict, "predict")
 
   def get_labels(self):
     """See base class."""
@@ -1083,8 +1102,9 @@ def main(_):
         pass
       
   if FLAGS.do_predict:
-    predict_examples = processor.get_test_examples(FLAGS.data_dir)
+    predict_examples = processor.get_predict_examples(FLAGS.predict_data)
     num_actual_predict_examples = len(predict_examples)
+    print(predict_examples, num_actual_predict_examples)
     if FLAGS.use_tpu:
       # TPU requires a fixed batch size for all batches, therefore the number
       # of examples must be a multiple of the batch size, or else examples
@@ -1113,7 +1133,7 @@ def main(_):
 
     result = estimator.predict(input_fn=predict_input_fn)
 
-    output_predict_file = os.path.join(FLAGS.output_dir, "test_results.tsv")
+    output_predict_file = os.path.join(FLAGS.output_dir, "predict_results.tsv")
     with tf.gfile.GFile(output_predict_file, "w") as writer:
       num_written_lines = 0
       tf.logging.info("***** Predict results *****")

@@ -1,0 +1,50 @@
+[
+    {
+        "classification": 1,
+        "headlineText": "President Trump said there was a \u201cvery, very good chance\u201d of a trade deal with China being reached when he meets with the Chinese president in March.",
+        "headlineTitle": "U.S. and China Extend Talks, but Final Deal Remains Elusive",
+        "idx": 0
+    },
+    {
+        "classification": 1,
+        "headlineText": "Despite talk that the dollar was losing dominance, it has only gained stature, reinforcing President Trump\u2019s power to dictate foreign policy.",
+        "headlineTitle": "The Dollar Is Still King. How (in the World) Did That Happen?",
+        "idx": 1
+    },
+    {
+        "classification": -1,
+        "headlineText": "The Fed released minutes of its January meeting showing officials continued to express confidence in the economy but saw enough warning signs to warrant a pause in rate increases.",
+        "headlineTitle": "Fed Explains Pause as Officials Debate Future Rate Increases",
+        "idx": 6
+    },
+    {
+        "classification": -1,
+        "headlineText": "A proposal to tax wealth finds support across party lines, along with the premise that the government should combat inequality.",
+        "headlineTitle": "Democrats Want to Tax the Wealthy. Many Voters Agree.",
+        "idx": 7
+    },
+    {
+        "classification": 1,
+        "headlineText": "A decline in residential real estate has led several recessions. With construction still in a multiyear slump, it seems unlikely to be the culprit this year.",
+        "headlineTitle": "Housing Is Already in a Slump. So It (Probably) Can\u2019t Cause a Recession.",
+        "idx": 8
+    },
+    {
+        "classification": -1,
+        "headlineText": "There are other tools that don\u2019t involve quite the risks and challenges of targeting the richest families.",
+        "headlineTitle": "Elizabeth Warren Wants a Wealth Tax. How Would That Even Work?",
+        "idx": 9
+    },
+    {
+        "classification": -1,
+        "headlineText": "Plus, tax season brings bad news, and the Fed offers more clues about its change of heart.",
+        "headlineTitle": "The Week in Business: Amazon Breaks Up With New York, and Warren Buffett Takes Stock",
+        "idx": 10
+    },
+    {
+        "classification": -1,
+        "headlineText": "With millions of people filing tax returns under a new tax law and after a long government shutdown, this is a challenging year. We offer survival tips and extensive coverage.",
+        "headlineTitle": "Watch Out. Tax Season Is Even More Stressful Than Usual.",
+        "idx": 11
+    }
+]
