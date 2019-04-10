@@ -1025,7 +1025,7 @@ def main(_):
       if FLAGS.do_eval:
         
         eval_examples = processor.get_dev_examples(FLAGS.data_dir, x_dev, y_dev)
-        print("eval_examples")
+        print("eval_examples length: %d"%(len(eval_examples)))
         
         for ex in eval_examples:
           if(ex.label == 'positive'):
@@ -1130,7 +1130,7 @@ def main(_):
           except ZeroDivisionError:
             pass
       splitNum = splitNum + 1
-      
+
     trueY = np.array(trueY)
     scoreY = np.array(scoreY)
     fpr, tpr, thresholds = metrics.roc_curve(trueY, scoreY, pos_label=1)
@@ -1140,7 +1140,7 @@ def main(_):
     print("thresholds: ", thresholds.tolist())
     print("auc: ", auc)
     with open("roc_auc.json", "w") as f:
-      f.write(json.dumps({"fpr": fpr.tolist(), "tpr": tpr.tolist(), "thresholds": thresholds.tolist(), "auc": auc}, indent=4, separators=(',', ': ')))
+      f.write(json.dumps({"fpr": fpr.tolist(), "tpr": tpr.tolist(), "thresholds": thresholds.tolist(), "auc": auc, "y_real": trueY.tolist(), "y_score": scoreY.tolist()}, indent=4, separators=(',', ': ')))
 
   if FLAGS.do_predict:
     task_name = FLAGS.task_name.lower()
