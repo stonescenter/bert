@@ -26,6 +26,7 @@ import optimization
 import tokenization
 import tensorflow as tf
 from sklearn.model_selection import train_test_split, KFold
+from sklearn import metrics
 import numpy as np
 
 flags = tf.flags
@@ -931,7 +932,10 @@ def main(_):
   for block in data:
     x = np.append(x, "%s %s"%(block["headlineTitle"], block["headlineText"]))
     y = np.append(y, dicReverse[block["classification"]])
-
+  
+  trueY = []
+  scoreY = []
+  
   if FLAGS.do_train:
     splitNum = 1
     kf = KFold(n_splits= 10)
@@ -1019,7 +1023,17 @@ def main(_):
         estimator.train(input_fn=train_input_fn, max_steps=num_train_steps)
 
       if FLAGS.do_eval:
+        
         eval_examples = processor.get_dev_examples(FLAGS.data_dir, x_dev, y_dev)
+        print("eval_examples")
+        
+        for ex in eval_examples:
+          if(ex.label == 'positive'):
+            trueY.append(1)
+          else:
+            trueY.append(0)
+        print(trueY)
+
         num_actual_eval_examples = len(eval_examples)
         if FLAGS.use_tpu:
           # TPU requires a fixed batch size for all batches, therefore the number
@@ -1054,8 +1068,13 @@ def main(_):
             seq_length=FLAGS.max_seq_length,
             is_training=False,
             drop_remainder=eval_drop_remainder)
-
+        
         result = estimator.evaluate(input_fn=eval_input_fn, steps=eval_steps)
+        
+        res = estimator.predict(input_fn=eval_input_fn)
+        
+        for score in res:
+          scoreY.append(score["probabilities"][1])
 
         output_eval_file = os.path.join(FLAGS.output_dir+"split%s"%(str(splitNum)), "eval_results.txt")
         with tf.gfile.GFile(output_eval_file, "w") as writer:
@@ -1110,8 +1129,16 @@ def main(_):
             writer.write("f1 = %s"%str(2*float(result["recall"])*float(result["precision"])/(float(result["recall"])+float(result["precision"]))))
           except ZeroDivisionError:
             pass
-
       splitNum = splitNum + 1
+
+    trueY = np.array(trueY)
+    scoreY = np.array(scoreY)
+    fpr, tpr, thresholds = metrics.roc_curve(trueY, scoreY, pos_label=1)
+    auc = metrics.auc(fpr, tpr)
+    print("fpr: ", fpr.tolist())
+    print("tpr: ", tpr.tolist())
+    print("thresholds: ", thresholds.tolist())
+    print("auc: ", auc)
 
   if FLAGS.do_predict:
     task_name = FLAGS.task_name.lower()
