@@ -1229,6 +1229,7 @@ def main(_):
 
     result = estimator.predict(input_fn=predict_input_fn)
     
+    dictForPred = None
     try:
       dictForPred = json.load(open(FLAGS.predict_data, 'w'))
     except Exception as e:
