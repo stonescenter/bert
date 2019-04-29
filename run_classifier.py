@@ -1228,6 +1228,11 @@ def main(_):
         drop_remainder=predict_drop_remainder)
 
     result = estimator.predict(input_fn=predict_input_fn)
+    
+    try:
+      dictForPred = json.load(open(FLAGS.predict_data, 'w'))
+    except Exception as e:
+      print(e)
 
     output_predict_file = os.path.join(FLAGS.output_dir, "predict_results.tsv")
     with tf.gfile.GFile(output_predict_file, "w") as writer:
@@ -1237,12 +1242,19 @@ def main(_):
         probabilities = prediction["probabilities"]
         if i >= num_actual_predict_examples:
           break
+        dictForPred[i]['classification'] = 1 if probabilities[1] >= 0.5 else -1
+
         output_line = "\t".join(
             str(class_probability)
             for class_probability in probabilities) + "\n"
         writer.write(output_line)
         num_written_lines += 1
     assert num_written_lines == num_actual_predict_examples
+
+    output_predict_json = os.path.join(FLAGS.output_dir, "predict_results.json")
+    
+    with open(output_predict_json, 'w') as jf:
+      jf.write(json.dumps(dictForPred, indent = 4))
 
 if __name__ == "__main__":
   flags.mark_flag_as_required("data_dir")

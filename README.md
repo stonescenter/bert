@@ -1021,3 +1021,10 @@ python run_classifier.py \
   --num_train_epochs=10.0 \
   --output_dir=/tmp/outBNDtask/ \
   --seed=123124124
+
+  Para predição faça:
+
+  export DATA_PRED = /path/to/json/for/prediction
+  output_dir = diretório onde foi treinado o modelo no qual quer carregar o checkpoint   
+
+  python run_classifier.py --task_name=BND --do_predict=true --data_dir=$BNEWS_DATA --predict_data=$DATA_PRED --vocab_file=$BERT_BASE_DIR/vocab.txt --bert_config_file=$BERT_BASE_DIR/bert_config.json --init_checkpoint=$BERT_BASE_DIR/bert_model.ckpt --output_dir=/home/matheusgomes/bert/outsplit1 > ../out_bert.txt

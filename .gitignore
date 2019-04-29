@@ -117,3 +117,6 @@ dmypy.json
 
 # Arquivo de execucao
 *.sh
+
+# arquivo gerado pra plotar curva roc
+roc_auc.json
