@@ -1229,12 +1229,8 @@ def main(_):
 
     result = estimator.predict(input_fn=predict_input_fn)
     
-    dictForPred = None
-    try:
-      dictForPred = json.load(open(FLAGS.predict_data, 'w'))
-    except Exception as e:
-      print(e)
-
+    dictForPred = json.load(open(FLAGS.predict_data))
+    
     output_predict_file = os.path.join(FLAGS.output_dir, "predict_results.tsv")
     with tf.gfile.GFile(output_predict_file, "w") as writer:
       num_written_lines = 0
