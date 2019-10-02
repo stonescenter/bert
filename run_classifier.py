@@ -321,9 +321,10 @@ class BusinessNewsData(DataProcessor):
   dicReverse = {-1: 'negative', 1: 'positive'}
   
   def __init__(self, data_dir, seed):
-    with open(data_dir) as f:
-      self.data = json.load(f)
 
+    with tf.gfile.Open(data_dir, "r") as f:
+      self.data = json.load(f)
+    # aqui porque entrenam o modelo como titulos e textoww
     for block in self.data:
         self.x.append("%s %s"%(block["headlineTitle"], block["headlineText"]))
         self.y.append(self.dicReverse[block["classification"]])
@@ -355,7 +356,7 @@ class BusinessNewsData(DataProcessor):
     except Exception as e:
       print("Erro ao tentar abrir o diretório" + str(e))
     try:
-      with open(FLAGS.output_dir + '/dataDistribution.txt', 'a') as f:
+      with tf.gfile.GFile(FLAGS.output_dir + '/dataDistribution.txt', 'a') as f:
         f.write("------ STATISTICS %s ------\n"%(conjunto))
         f.write("POSITIVES: %f NEGATIVES: %f\n"%(float(qtdePositive/total), float(qtdeNegative/total)))
       f.close()
@@ -382,7 +383,7 @@ class BusinessNewsData(DataProcessor):
     y_predict=[]
     data_predict = []
     
-    with open(predict_data) as fp:
+    with tf.gfile.Open(predict_data,"r") as fp:
       data_predict = json.load(fp)
     
     for block in data_predict:
@@ -399,7 +400,7 @@ class BusinessNewsData(DataProcessor):
   def _create_examples(self, x, y, set_type):
     """Creates examples for the training and dev sets."""
     examples = []
-    for i in xrange(len(x)):
+    for i in range(len(x)):
       guid = "%s-%s" % (set_type, i)
       text = tokenization.convert_to_unicode(x[i])
       label = tokenization.convert_to_unicode(y[i])
