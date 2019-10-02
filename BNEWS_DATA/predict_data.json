@@ -1,13 +1,13 @@
 [
     {
         "classification": 1,
-        "headlineText": "President Trump said there was a \u201cvery, very good chance\u201d of a trade deal with China being reached when he meets with the Chinese president in March.",
+        "headlineText": "President Trump said there was a very, very good chance of a trade deal with China being reached when he meets with the Chinese president in March.",
         "headlineTitle": "U.S. and China Extend Talks, but Final Deal Remains Elusive",
         "idx": 0
     },
     {
         "classification": 1,
-        "headlineText": "Despite talk that the dollar was losing dominance, it has only gained stature, reinforcing President Trump\u2019s power to dictate foreign policy.",
+        "headlineText": "Despite talk that the dollar was losing dominance, it has only gained stature, reinforcing President Trump's power to dictate foreign policy.",
         "headlineTitle": "The Dollar Is Still King. How (in the World) Did That Happen?",
         "idx": 1
     },
@@ -26,12 +26,12 @@
     {
         "classification": 1,
         "headlineText": "A decline in residential real estate has led several recessions. With construction still in a multiyear slump, it seems unlikely to be the culprit this year.",
-        "headlineTitle": "Housing Is Already in a Slump. So It (Probably) Can\u2019t Cause a Recession.",
+        "headlineTitle": "Housing Is Already in a Slump. So It (Probably) Can't Cause a Recession.",
         "idx": 8
     },
     {
         "classification": -1,
-        "headlineText": "There are other tools that don\u2019t involve quite the risks and challenges of targeting the richest families.",
+        "headlineText": "There are other tools that don't involve quite the risks and challenges of targeting the richest families.",
         "headlineTitle": "Elizabeth Warren Wants a Wealth Tax. How Would That Even Work?",
         "idx": 9
     },
